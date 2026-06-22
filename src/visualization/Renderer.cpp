@@ -1,13 +1,20 @@
-#include "Renderer.hpp"
-#include "Grid.hpp"
-
-/*  Import SDL * OpenGL Tools
- *  SDL: window, peripheral access & interactions
- *      - Also creates OpenGL Context TODO
- *  OpenGL GLEW: TODO
+/*  Renderer
+ *
+ *  Shader - now we have our shader program, it has been attached to the program and we are ready to use the shader program
+ *
+ *  The Renderer will use the shader program and this class serves two purposes:
+ *  1. Use OpenGL to create a context for the GPU
+ *  2. Attach the SDL window to the context
+ *  3. Initialize Vertex Buffer Object and Vertex Array Object
+ *  4. Define VBO and VAO
  *
  */
 
+#include "Renderer.hpp"
+#include "Shader.hpp"
+#include "Grid.hpp"
+
+/*  We are using SDL for window management and OpenGL for GPU management (mainly memory and context management) */
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
 
@@ -15,132 +22,116 @@
 #include <iostream>
 #include <cstdlib>
 
-using namespace std;
+/*  Constructor: Call helper functions to enable GL library with GPU, initialize our context and window and define our vao, vbo buffers */
+Renderer::Renderer() : Shader("shaders/point.vert", "shaders/heat.frag")  {
+    initializeOpenGL();
+    initializeContextandWindow();
+    initializeandDefineBuffers();
+}
 
-/*  Vertex Shader:
+/*  Destructor: delete our context and destroy our window   */
+Renderer::~Renderer() {
+    SDL_GL_DeleteContext(context);
+    SDL_GL_DestroyWindow(window);
+    SDL_Quit();
+}
+
+/*  initializeOpenGL
  *  
- *  Converts our temperature list/buffer to positions in our context TODO
- *  #version 330 core - GLSL version 3.3 & core profile (modern OpenGL only) TODO
- *  
- *  We are setting up how our vectors wil look like for the GPU
- *  //layout(location = 0) in vec2 pos;
- *  vec2 = (x,y)                                            TODO
+ *  Initializing OpenGL allows us to access our GPU's GL & GLEW Functions from the driver
+ */
+void Renderer::initializeOpenGL() {
+    glewExperimental = GL_TRUE;
+
+    glewInit();
+}
+
+/*  initializeContextandWindow
  *
- *  We are taking in temperature as another vector and outputting it:
- *
+ *  This is all about how we manage the GPU from here on in. Our GPU will have a context - an "art studio" - a place to manage all the resources needed
+ *  We created our window via SDL and we need to attach that window to the contxt so the GPU can perform the calculations and actually draw on the canvas 
+ *  (thru ultimately the fragment shader)
  *
  */
-
-const char* vertexShaderSrc = R"(
-#version 330 core
-
-layout(location = 0) in vec2 pos;
-layout(location = 1) in float temp;
-
-out float vTemp;
-
-void main() {
-    vTemp = temp;
-    gl_Position = vec4(pos, 0.0, 1.0);
-    gl_PointSize = 10.0
-}
-)";
-
-const char* fragmentSharderSrc = R"(
-#version 330 core
-
-in float vTemp;
-out vec4 color;
-
-void main() {
-    vec3 cold = vec3(0.0, 0.0, 1.0);
-    vec3 hot = vec3(1.0, 0.0, 0.0);
-
-    vec3 finalColor = mix(cold, hot, vTemp);
-
-    color = vec4(finalColor, 1.0);
-}
-)";
-
-/* THIS SHOULD GO INTO THE SHADER PORTION */
-GLuint createProgram() {
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vertexShaderSrc);
-    GLuint fs = compileShader(GL_FRAGMENT_SHADER, framentShaderSrc);
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
-
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-
-    return program;
-}
-
-//TODO: Remove
-int main() {
-
-    //RENDERER: CREATE CONTEXT, CREATE WINDOW, ATTACH CONTEXT TO WINDOW, DEFINE CONTEXT WITH VAO AND VBO (MEMORY MANAGEMENT), DISPLAY SCREEN
-
-    SDL_Init(SDL_INIT_VIDEO); //RENDERER
-
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3); //RENDERER
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3); //RENDERER
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE); //RENDERER
-
-    //edge case 1: TODO
-    //if (SDL_Init(SDL_INIT_VIDEO) < 0) {cerr << "SDL init failed\n"; return 1;}
-
-    SDL_Window* window = SDL_CreateWindow("Heat GLSL - One Point", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1000, 800, SDL_WINDOW_OPENGL); //RENDERER
-
-    //if (!window) {cerr << "Window Failed\n"; return 1;}
+void initializeContextandWindow() {
+    /*  Start a new SDL instance    */
+    SDL_Init(SDL_INIT_VIDEO);
     
-    SDL_GLContext context = SDL_GL_CreateContext(window); //RENDERER
-
-    glewExperiment = GL_TRUE; //enable GL Functions from the GPU Driver //RENDERER
-    glewInit();                                                         //RENDERER
-
-    GLuint program = createProgram();                                   //RENDERER
-
-    float data[] = {0.0f, 0.0f, 1.0f};                                  //RENDERER
-
-    GLuint vao, vbo;                                                    //RENDERER
-
-    glGenVertexArrays(1, &vao);                                         //RENDERER
-    glGenBuffers(1, &vbo);                                              //RENDERER
-
-    glBindVertexArray(vao);                                             //RENDERER
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);                                 //RENDERER
-    glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);  //RENDERER
-
-    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(2 * sizeof(float))); //RENDERER
-    glEnableVertexAttribArray(1);                                                                   //RENDERER
+    /*  Define what version of OpenGL we will use   */
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     
-    //WILL THIS BE MAIN?
+    /*  Create our window - titled Heat Engine, centered, 800 x 600 pixels, usable with OpenGL context  */
+    window = SDL_GL_CreateWindow("Heat Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_OPENGL);
+    
+    /*  Create our context - attach it to the window, so now our window has GPU resources attached to it    */
+    context = SDL_GL_CreateContext(window);
+}
 
-    bool running = true;
+/*  initializeandDefineBuffers()
+ *
+ *  Now that we have our context and window, we have one last thing to cover
+ *  We have to manage our GPU's memory - specifically, the vertex array objects (VAO) and the vertex buffer objects (VBO)
+ *  VBO: stores vertex data [0 1 2] - 1 vertex w/ 2 attributes (x, y) & temp: [(x, y), temp]
+ *      - This buffer stores all the vertices' data
+ *  VAO: stores the instructions for interpreting our VBO data -- it is NOT actual vertex data
+ *      - if we store [(x,y), temp], VAO says attribute0 is 2 floats and attribute1 is 1 float
+ *      - good for distinctions of [1,2,3] and [(1,2),3]
+ *
+ *  What is Binding?
+ *  Binding is basically saying we want x buffer to be affected - the target buffer to be modified
+ *  In this case, we are saying that we want vbo to be modified, and we want our point data to be uploaded there
+ */
+void initializeandDefineBuffers() {
+    /*  OUR DATA    */
+    float point[] = {0.0f, 0.0f, 1.0f};
+    
 
-    while (running) {
-        SDL_Event event;
 
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) running = false;
-        }
+    /*  VBO - VERTEX BUFFER OBJECT - OUR ACTUAL DATA    */
 
-        glClear(GL_COLOR_BUFFER_BIT);
+    /*  INITIALIZE (1, into vbo) */
+    glGenBuffers(1, &vbo);
+    /*  BIND    */
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    /*  UPLOAD  */
+    glBufferData(GL_ARRAY_BUFFER, sizeof(point), point, GL_STATIC_DRAW);
+    
 
-        glUseProgram(program);
-        glBindVertexArray(vao);
-        
-        glDrawArrays(GL_POINTS, 0, 1);
 
-        SDL_GL_SwapWindow(window);
-    }
+    /*  VAO - VERTEX ARRAY OBJECT - OUR LAYOUT INFORMATION  */
 
-    //SDL_DestroyWindow(window);
-    SDL_Quit();
+    /*  INITIALIZE  */
+    glGenVertexArray(1, &vao);
+    /*  BIND    */
+    glBindVertexArray(vao);
+    /*  LAYOUT  */
+    /*  Initialize and Define: Attribute 0: 2 floats, stride = 3 floats, starts at offset 0    */
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    /*  Initialize and Define: Attribute 1: 1 float, stride = 3 floats, starts at offset 2 floats (after the second float)  */
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+}
 
-    return 0;
+/*  Render
+ *
+ *  THIS WILL BE OUR FUNCTION THAT WILL RUN IN THE RUNNING LOOP.
+ *  Every time we render, we should redefine what data is expected and in what format and then redraw (i.e. update our context) and then 
+ *  update our window
+ */
+void Renderer::Render() {
+    /*  Effectively Clears the screen   */
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    /*  Calls the shader class to take the input data and convert that to a point on the screen with a color    */
+    shader.use();
+
+    /*  Make sure GL knows the configuration of our vbo's again */
+    glBindVertexArray(vao);
+    /*  What data are we expecting and how we will we draw it - "mode"; first, count    */
+    glDrawArrays(GL_POINTS, 0, 1);
+    /*  Update our window from our context  */
+    SDL_GL_SwapWindow(window);
 }

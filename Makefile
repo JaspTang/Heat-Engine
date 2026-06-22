@@ -2,6 +2,8 @@ CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -g -O0
 INCLUDES = -Isrc/computation -Isrc/visualization
 
+SDLFLAGS = $(shell sdl2-config --cflags --libs)
+
 SRC = \
 src/computation/Grid.cpp \
 src/computation/HeatCompute.cpp \
@@ -14,7 +16,8 @@ all:
 	$(CXX) $(CXXFLAGS) $(INCLUDES) \
 	src/app/main.cpp \
 	$(SRC) \
-	-o $(APP)
+	-o $(APP) \
+	$(SDLFLAGS)
 
 run: all
 	./$(APP)

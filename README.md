@@ -98,3 +98,14 @@ Pipeline:
     reads T[i]
     maps → color
     draws point at voxel center
+
+*Compiling & Testing*
+run **make** to make the full-fledged simulation
+run **make test_grid** to make the test_grid simulation
+run **make run_test_grid** to run the test_grid simulation
+
+*Visualization*
+For my simulation, I will have 2 layers - a simulation time mode and a renderer time mode
+The visual engine will eventually have many options to display the change in heat, including (and standard) particles, contours, irradiated heat
+
+
