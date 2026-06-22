@@ -3,6 +3,14 @@
 
 #include "Shader.hpp"
 
+#include <SDL2/SDL.h>
+#include <GL/glew.h>
+
+#include <cstdlib>
+#include <string>
+
+#include <memory>
+
 class Renderer {
     public:
         Renderer();                         /*  Constructor: initialize gl functions, initialize context and window, initialize buffers  */
@@ -26,7 +34,7 @@ class Renderer {
         void initializeandDefineBuffers();
         
         /*  The specific shader our Renderer will be using  */
-        Shader shader;
+        std::unique_ptr<Shader> shader;
 };
 
 #endif

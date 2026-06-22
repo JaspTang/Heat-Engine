@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <string>
 #include <GL/glew.h>
+#include <fstream>
+#include <sstream>
 
 /*  Shader File
  *
@@ -17,8 +19,10 @@
  *  As a class, this will be used by our renderer (initializes context, prepares context, initializes & prepares gpu memory
  */
 
+using namespace std;
+
 /*  Load File: loads the GLSL Programs from file path   */
-string Shader::loadFile(string& path) {
+string Shader::loadFile(const string& path) {
     ifstream file(path);
     stringstream buffer;
 
@@ -28,7 +32,7 @@ string Shader::loadFile(string& path) {
 }
 
 /*  Constructor: when we create a Shader Object, we want it to package our current Shaders, so we call createProgram to do this   */
-Shader::Shader(string vertShader, string fragShader) {
+Shader::Shader(const string vertShader, const string fragShader) {
     /*  Everytime we create a new Shader object, we want to do this, so that's why we call in our constructor and not independently
      *  Also, we want the function outside of the constructor to be able to be called on its own too
      */
@@ -53,7 +57,7 @@ Shader::Shader(string vertShader, string fragShader) {
  *  6. delete our temporary compiled-shader programs
  */
 
-void Shader::createExecutableProgram(string& vertexShader, string& fragmentShader) {
+void Shader::createExecutableProgram(const string& vertexShader, const string& fragmentShader) {
     //1.
     /* Initialize new Shader Objects (1 for vertex shader, 1 for fragment shader) */
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);

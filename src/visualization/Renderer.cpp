@@ -21,18 +21,20 @@
 /* Used for input and such (functionality) */
 #include <iostream>
 #include <cstdlib>
+#include <memory>
 
 /*  Constructor: Call helper functions to enable GL library with GPU, initialize our context and window and define our vao, vbo buffers */
-Renderer::Renderer() : Shader("shaders/point.vert", "shaders/heat.frag")  {
-    initializeOpenGL();
+Renderer::Renderer() {
     initializeContextandWindow();
+    initializeOpenGL();
+    shader = make_unique<Shader>("shaders/point.vert", "shaders/heat.frag");
     initializeandDefineBuffers();
 }
 
 /*  Destructor: delete our context and destroy our window   */
 Renderer::~Renderer() {
     SDL_GL_DeleteContext(context);
-    SDL_GL_DestroyWindow(window);
+    SDL_DestroyWindow(window);
     SDL_Quit();
 }
 
@@ -53,7 +55,7 @@ void Renderer::initializeOpenGL() {
  *  (thru ultimately the fragment shader)
  *
  */
-void initializeContextandWindow() {
+void Renderer::initializeContextandWindow() {
     /*  Start a new SDL instance    */
     SDL_Init(SDL_INIT_VIDEO);
     
@@ -63,7 +65,7 @@ void initializeContextandWindow() {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     
     /*  Create our window - titled Heat Engine, centered, 800 x 600 pixels, usable with OpenGL context  */
-    window = SDL_GL_CreateWindow("Heat Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_OPENGL);
+    window = SDL_CreateWindow("Heat Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_OPENGL);
     
     /*  Create our context - attach it to the window, so now our window has GPU resources attached to it    */
     context = SDL_GL_CreateContext(window);
@@ -83,7 +85,7 @@ void initializeContextandWindow() {
  *  Binding is basically saying we want x buffer to be affected - the target buffer to be modified
  *  In this case, we are saying that we want vbo to be modified, and we want our point data to be uploaded there
  */
-void initializeandDefineBuffers() {
+void Renderer::initializeandDefineBuffers() {
     /*  OUR DATA    */
     float point[] = {0.0f, 0.0f, 1.0f};
     
@@ -103,7 +105,7 @@ void initializeandDefineBuffers() {
     /*  VAO - VERTEX ARRAY OBJECT - OUR LAYOUT INFORMATION  */
 
     /*  INITIALIZE  */
-    glGenVertexArray(1, &vao);
+    glGenVertexArrays(1, &vao);
     /*  BIND    */
     glBindVertexArray(vao);
     /*  LAYOUT  */
@@ -121,12 +123,12 @@ void initializeandDefineBuffers() {
  *  Every time we render, we should redefine what data is expected and in what format and then redraw (i.e. update our context) and then 
  *  update our window
  */
-void Renderer::Render() {
+void Renderer::render() {
     /*  Effectively Clears the screen   */
     glClear(GL_COLOR_BUFFER_BIT);
     
     /*  Calls the shader class to take the input data and convert that to a point on the screen with a color    */
-    shader.use();
+    shader->useExecutableProgram();
 
     /*  Make sure GL knows the configuration of our vbo's again */
     glBindVertexArray(vao);
